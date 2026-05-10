@@ -12,8 +12,8 @@
     <style>
         :root { --primary: #818cf8; --dark: #020617; }
         * { -webkit-font-smoothing: antialiased; box-sizing: border-box; user-select: none; touch-action: none; -webkit-tap-highlight-color: transparent; }
-        html, body { min-height: 100%; }
-        body { background: var(--dark); color: #f8fafc; font-family: 'Inter', system-ui, sans-serif; margin: 0; display: flex; flex-direction: column; min-height: 100vh; }
+        html, body { min-height: 100%; height: 100dvh; overflow: hidden; }
+        body { background: var(--dark); color: #f8fafc; font-family: 'Inter', system-ui, sans-serif; margin: 0; display: flex; flex-direction: column; }
         .glass { background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(24px); border: 1px solid rgba(255, 255, 255, 0.1); }
         .btn-active:active { transform: scale(0.94); transition: transform 0.1s ease; }
         #canvasMain { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
@@ -57,10 +57,8 @@
         <div id="pane-interact" class="pane active">
             <div class="flex-1 glass rounded-[48px] relative overflow-hidden mb-4 min-h-[320px]">
                 <div id="templateLabel" class="absolute top-6 left-6 text-[10px] font-black uppercase tracking-widest opacity-20 pointer-events-none z-20">Blank Canvas</div>
-                
                 <canvas id="canvasMain"></canvas>
                 <div id="inputSurface"></div>
-                
                 <div class="absolute bottom-6 left-6 flex gap-4 z-20 flex-wrap">
                     <button id="toggleTemplate" class="btn-active w-14 h-14 glass rounded-2xl flex items-center justify-center text-indigo-300">
                         <i data-lucide="layers"></i>
@@ -106,7 +104,7 @@
                     <span class="text-[10px] font-black opacity-20 uppercase tracking-widest">Session Intelligence</span>
                     <button id="clearSummary" class="text-[9px] font-black opacity-40 uppercase bg-white/5 px-2 py-1 rounded-lg">Clear All</button>
                 </div>
-                <textarea id="output" class="no-scrollbar text-[13px] font-medium" placeholder="Session data will appear here as you log trials..."></textarea>
+                <textarea id="output" class="no-scrollbar text-[13px] font-medium" placeholder="Session data will appear here..."></textarea>
             </div>
         </div>
 
@@ -114,13 +112,29 @@
             <div class="flex-1 glass rounded-[40px] p-6 flex flex-col min-h-0 overflow-hidden">
                 <div class="flex items-center justify-between gap-4 mb-4">
                     <div>
-                        <div class="text-[10px] font-black opacity-30 uppercase tracking-widest">Welcome to Luyo</div>
-                        <h1 class="text-2xl font-black tracking-tight mt-2">Guide &amp; Workflow Overview</h1>
+                        <div class="text-[10px] font-black opacity-30 uppercase tracking-widest">Workspace Manual</div>
+                        <h1 class="text-2xl font-black tracking-tight mt-2">Workflow Overview</h1>
                     </div>
                     <button id="backFromGuide" class="btn-active text-[12px] font-black uppercase tracking-wider px-4 py-2 rounded-full bg-white/10 border border-white/10">Back</button>
                 </div>
                 <div id="guideContent" class="flex-1 overflow-y-auto pr-2 text-[13px] leading-6 text-slate-200">
-                    <p>Refer to navigation for usage tips.</p>
+                    <section class="mb-6">
+                        <h2 class="text-base font-bold mb-2 text-indigo-300">1. Interactive Templates</h2>
+                        <p>Use the <strong>Layers</strong> icon to cycle through clinical backgrounds:</p>
+                        <ul class="list-disc list-inside ml-2 opacity-80">
+                            <li><strong>Lined Paper:</strong> For handwriting or sentence structure practice.</li>
+                            <li><strong>Tic-Tac-Toe:</strong> A quick reinforcement game to keep sessions engaging.</li>
+                            <li><strong>Oral Anatomy:</strong> A visual aid for modeling tongue and lip placement.</li>
+                        </ul>
+                    </section>
+                    <section class="mb-6">
+                        <h2 class="text-base font-bold mb-2 text-indigo-300">2. Real-Time Data Logging</h2>
+                        <p>Switch to the <strong>Data Pane</strong> (list icon) to track progress. Each tap updates the percentages in the session report. Your manual notes are preserved even as trial counts update.</p>
+                    </section>
+                    <section class="mb-6">
+                        <h2 class="text-base font-bold mb-2 text-indigo-300">3. Pressure-Sensitive Ink</h2>
+                        <p>The canvas responds to touch pressure (on supported styluses). Use the orange and indigo toggles to differentiate between clinician models and student attempts.</p>
+                    </section>
                 </div>
             </div>
         </div>
@@ -153,24 +167,25 @@
             loadVoices();
             resize();
             setInterval(() => { if (state.db.timerActive) { state.db.elapsed += 1; updateClock(); } }, 1000);
-            const unlockAudio = () => { if (!state.ac) state.ac = new (window.AudioContext || window.webkitAudioContext)(); window.removeEventListener('pointerdown', unlockAudio); };
+            const unlockAudio = () => { if (!state.ac) state.ac = new (window.AudioContext || window.webkitAudioContext)(); };
             window.addEventListener('pointerdown', unlockAudio, { once: true });
         }
 
         function drawTemplate() {
-            const w = cMain.width / (window.devicePixelRatio || 1);
-            const h = cMain.height / (window.devicePixelRatio || 1);
+            const dpr = window.devicePixelRatio || 1;
+            const w = cMain.width / dpr;
+            const h = cMain.height / dpr;
             ctx.save();
             ctx.setLineDash([]);
             
             if (state.templateIndex === 1) { // Lined Paper
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
                 ctx.lineWidth = 1;
                 for (let i = 40; i < h; i += 40) {
                     ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(w, i); ctx.stroke();
                 }
             } else if (state.templateIndex === 2) { // Tic Tac Toe
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
                 ctx.lineWidth = 3;
                 const size = Math.min(w, h) * 0.6;
                 const offsetX = (w - size) / 2;
@@ -182,30 +197,34 @@
             } else if (state.templateIndex === 3) { // Anatomy Simplified
                 ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
                 ctx.lineWidth = 2;
-                ctx.beginPath(); // Basic mouth/tongue silhouette
-                ctx.arc(w/2, h/2, 60, 0, Math.PI, true); 
-                ctx.moveTo(w/2 - 60, h/2); ctx.quadraticCurveTo(w/2, h/2 + 100, w/2 + 60, h/2);
+                ctx.beginPath();
+                ctx.arc(w/2, h/2 - 20, 60, 0, Math.PI, true); 
+                ctx.moveTo(w/2 - 60, h/2 - 20); ctx.quadraticCurveTo(w/2, h/2 + 80, w/2 + 60, h/2 - 20);
                 ctx.stroke();
                 ctx.font = 'bold 10px Inter'; ctx.fillStyle = 'rgba(255,255,255,0.2)';
-                ctx.fillText('TONGUE PLACEMENT MODEL', w/2 - 60, h/2 - 80);
+                ctx.textAlign = 'center';
+                ctx.fillText('ORAL PLACEMENT MODEL', w/2, h/2 - 100);
             }
             ctx.restore();
             templateLabel.innerText = state.templates[state.templateIndex];
         }
 
         function loadVoices() {
-            const available = window.speechSynthesis.getVoices();
-            if (available.length) { state.availableVoices = available; return; }
-            window.speechSynthesis.onvoiceschanged = () => { state.availableVoices = window.speechSynthesis.getVoices(); };
+            const fetchVoices = () => {
+                state.availableVoices = window.speechSynthesis.getVoices();
+            };
+            fetchVoices();
+            if (speechSynthesis.onvoiceschanged !== undefined) {
+                speechSynthesis.onvoiceschanged = fetchVoices;
+            }
         }
 
         function playNaturalSpeech(text) {
-            if (!window.speechSynthesis) return;
             window.speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(text);
-            utterance.rate = 0.95;
-            const voices = state.availableVoices.length ? state.availableVoices : window.speechSynthesis.getVoices();
-            const voice = voices.find(v => /google|female|samantha/i.test(v.name)) || voices[0];
+            utterance.rate = 0.9;
+            const voices = state.availableVoices;
+            const voice = voices.find(v => /google|female|samantha|alloy/i.test(v.name)) || voices[0];
             if (voice) utterance.voice = voice;
             window.speechSynthesis.speak(utterance);
         }
@@ -218,27 +237,37 @@
             };
 
             document.querySelectorAll('.snd-btn').forEach(btn => {
-                btn.addEventListener('pointerdown', () => playNaturalSpeech(btn.dataset.speech));
+                btn.onpointerdown = () => playNaturalSpeech(btn.dataset.speech);
             });
 
-            document.getElementById('toggleTimer').addEventListener('click', () => {
+            document.getElementById('toggleTimer').onclick = () => {
                 state.db.timerActive = !state.db.timerActive;
                 document.getElementById('playPauseIcon').setAttribute('data-lucide', state.db.timerActive ? 'pause' : 'play');
                 lucide.createIcons();
-            });
+            };
 
             document.getElementById('resetTimer').onclick = () => { state.db.elapsed = 0; updateClock(); };
 
             let drawing = false;
-            const getPoint = e => { const rect = inputSurface.getBoundingClientRect(); return { x: e.clientX - rect.left, y: e.clientY - rect.top }; };
+            const getPoint = e => { 
+                const rect = inputSurface.getBoundingClientRect(); 
+                return { x: e.clientX - rect.left, y: e.clientY - rect.top }; 
+            };
             
-            inputSurface.onpointerdown = e => { drawing = true; const p = getPoint(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); inputSurface.setPointerCapture(e.pointerId); };
+            inputSurface.onpointerdown = e => { 
+                drawing = true; 
+                const p = getPoint(e); 
+                ctx.beginPath(); 
+                ctx.moveTo(p.x, p.y); 
+                inputSurface.setPointerCapture(e.pointerId); 
+            };
             inputSurface.onpointermove = e => {
                 if (!drawing) return;
                 const p = getPoint(e);
-                ctx.lineWidth = 2 + (e.pressure || 0.5) * 14;
+                ctx.lineWidth = 2 + (e.pressure || 0.5) * 16;
                 ctx.strokeStyle = state.db.ink;
-                ctx.lineTo(p.x, p.y); ctx.stroke();
+                ctx.lineTo(p.x, p.y); 
+                ctx.stroke();
             };
             inputSurface.onpointerup = () => drawing = false;
 
@@ -270,13 +299,12 @@
         function resize() {
             const dpr = window.devicePixelRatio || 1;
             const rect = cMain.parentElement.getBoundingClientRect();
-            if (!rect.width || !rect.height) return;
-            cMain.width = Math.round(rect.width * dpr);
-            cMain.height = Math.round(rect.height * dpr);
-            cMain.style.width = `${rect.width}px`;
-            cMain.style.height = `${rect.height}px`;
-            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-            ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = state.db.ink;
+            if (!rect.width) return;
+            cMain.width = rect.width * dpr;
+            cMain.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
+            ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+            ctx.strokeStyle = state.db.ink;
             drawTemplate();
         }
 
@@ -306,7 +334,7 @@
             document.getElementById(`pane-${id}`).classList.add('active');
             document.querySelectorAll('nav button').forEach(b => b.classList.add('opacity-30'));
             if (id !== 'guide') document.getElementById(`nav-${id}`).classList.remove('opacity-30');
-            if (id === 'interact') setTimeout(resize, 80);
+            if (id === 'interact') setTimeout(resize, 50);
         }
 
         window.onload = init;
