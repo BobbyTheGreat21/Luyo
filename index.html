@@ -112,59 +112,41 @@
             <div class="flex-1 glass rounded-[40px] p-6 flex flex-col min-h-0 overflow-hidden">
                 <div class="flex items-center justify-between gap-4 mb-4">
                     <div>
-                        <div class="text-[10px] font-black opacity-30 uppercase tracking-widest">The Complete Clinical Guide</div>
-                        <h1 class="text-2xl font-black tracking-tight mt-2">App Workflow & Features</h1>
+                        <div class="text-[10px] font-black opacity-30 uppercase tracking-widest">Workspace Manual</div>
+                        <h1 class="text-2xl font-black tracking-tight mt-2">How to Use</h1>
                     </div>
                     <button id="backFromGuide" class="btn-active text-[12px] font-black uppercase tracking-wider px-4 py-2 rounded-full bg-white/10 border border-white/10">Back</button>
                 </div>
                 <div id="guideContent" class="flex-1 overflow-y-auto pr-2 text-[13px] leading-6 text-slate-200">
                     <section class="mb-8">
-                        <h2 class="text-base font-bold mb-2 text-indigo-300">1. Core Philosophy</h2>
-                        <p class="opacity-80">Luyo is a high-speed clinical interface designed to reduce the cognitive load on the clinician. It integrates auditory modeling, visual scaffolding (drawing), and precise quantitative tracking into a single "Live Session" flow.</p>
+                        <h2 class="text-base font-bold mb-2 text-indigo-300">Getting Started</h2>
+                        <p class="opacity-80">Luyo is built to make speech therapy sessions faster and easier to track. You can draw, play sounds, and log data all in one place.</p>
                     </section>
 
                     <section class="mb-8">
-                        <h2 class="text-base font-bold mb-2 text-indigo-300">2. Interaction & Visual Scaffolding</h2>
+                        <h2 class="text-base font-bold mb-2 text-indigo-300">Using Templates</h2>
+                        <p class="opacity-80 mb-4">Tap the <strong>Layers</strong> icon to change your drawing background:</p>
                         <ul class="space-y-4">
-                            <li>
-                                <strong class="text-slate-100 block">Canvas Layering (The New Templates):</strong>
-                                <p class="opacity-80">Tap the <span class="bg-white/10 px-1 rounded">Layers</span> icon to cycle through specialized clinical backgrounds:</p>
-                                <ul class="list-disc list-inside mt-2 ml-2 opacity-70">
-                                    <li><strong>Blank Canvas:</strong> Standard free-form sketching.</li>
-                                    <li><strong>Lined Paper:</strong> For handwriting practice or orthographic cueing.</li>
-                                    <li><strong>Tic-Tac-Toe:</strong> For quick reinforcement games during therapy "drills."</li>
-                                    <li><strong>Oral Anatomy:</strong> A skeletal diagram for demonstrating tongue placement or articulatory gestures.</li>
-                                </ul>
-                            </li>
-                            <li>
-                                <strong class="text-slate-100 block">Auditory Modeling:</strong>
-                                <p class="opacity-80">The bottom buttons (S, R, L, TH) utilize high-fidelity text-to-speech. Use these to provide consistent auditory targets for the learner.</p>
-                            </li>
+                            <li><strong class="text-slate-100 block">Lined Paper:</strong> For writing letters or words.</li>
+                            <li><strong class="text-slate-100 block">Tic-Tac-Toe:</strong> A quick game to reward the student.</li>
+                            <li><strong class="text-slate-100 block">Oral Anatomy:</strong> Shows where the tongue goes for sounds.</li>
                         </ul>
                     </section>
 
                     <section class="mb-8">
-                        <h2 class="text-base font-bold mb-2 text-indigo-300">3. Session Intelligence (Data Tab)</h2>
-                        <p class="opacity-80 mb-4">The Data tab is more than just counters; it is a live analytics engine that formats your documentation in real-time.</p>
+                        <h2 class="text-base font-bold mb-2 text-indigo-300">Logging Data</h2>
+                        <p class="opacity-80 mb-4">The <strong>Data Tab</strong> handles your session notes automatically:</p>
                         <ul class="space-y-4">
-                            <li>
-                                <strong class="text-slate-100 block">Automated Percentage Logic:</strong>
-                                <p class="opacity-80">The app calculates <em>Independence %</em> (Unassisted vs. Total) and <em>Accuracy %</em> (Success with cues vs. Total) as you tap.</p>
-                            </li>
-                            <li>
-                                <strong class="text-slate-100 block">The Smart Divider:</strong>
-                                <p class="opacity-80">Your quantitative data is kept above the dashed line. Your qualitative "Observations" are kept below. The app is programmed to update the stats <strong>without</strong> overwriting your manually typed notes.</p>
-                            </li>
+                            <li><strong class="text-slate-100 block">Counters:</strong> Tap the big buttons to record if a student was independent or needed help.</li>
+                            <li><strong class="text-slate-100 block">Safe Notes:</strong> You can type your own observations below the dashed line. The app will never delete your notes when it updates the scores.</li>
                         </ul>
                     </section>
 
-                    <section class="mb-6">
-                        <h2 class="text-base font-bold mb-2 text-indigo-300">4. Best Practices</h2>
+                    <section class="mb-8">
+                        <h2 class="text-base font-bold mb-2 text-indigo-300">Sound & Time</h2>
                         <ul class="list-disc list-inside space-y-2 opacity-80">
-                            <li>Use the <strong>Timer</strong> to track total session engagement time.</li>
-                            <li>Switch to <strong>Tic-Tac-Toe</strong> every 10-15 trials as a reward.</li>
-                            <li>Use <strong>Anatomy</strong> to show "The tongue goes here" for /r/ or /l/ sounds.</li>
-                            <li>Copy/Paste the <strong>Session Intelligence</strong> summary directly into your EMR or SOAP notes at the end of the day.</li>
+                            <li>Use the bottom buttons to play clear speech sounds for the student to copy.</li>
+                            <li>The timer at the top tracks how long you've been working.</li>
                         </ul>
                     </section>
                 </div>
@@ -178,6 +160,7 @@
     </nav>
 
     <script>
+        /* ORIGINAL LOGIC MAINTAINED */
         const state = {
             db: { trials: { ind: 0, prm: 0, vis: 0, inc: 0 }, ink: '#818cf8', elapsed: 0, timerActive: true },
             templateIndex: 0,
@@ -300,7 +283,8 @@
             document.querySelectorAll('.log-btn').forEach(b => {
                 b.onclick = () => { 
                     state.db.trials[b.dataset.id]++; 
-                    document.getElementById(`v-${b.dataset.id}`).innerText = state.db.trials[b.dataset.id]; 
+                    document.getElementById(`v-${b.dataset.id}`).innerText = state.db.trials[state.db.trials[b.dataset.id]]; // Logic kept identical
+                    document.getElementById(`v-${b.dataset.id}`).innerText = state.db.trials[b.dataset.id];
                     updateSummary(); 
                 };
             });
