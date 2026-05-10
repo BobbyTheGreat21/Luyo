@@ -12,15 +12,15 @@
     <style>
         :root { --primary: #818cf8; --dark: #020617; }
         * { -webkit-font-smoothing: antialiased; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        html, body { min-height: 100%; height: 100dvh; overflow: hidden; touch-action: none; }
+        html, body { min-height: 100%; height: 100dvh; overflow: hidden; touch-action: none; position: fixed; width: 100%; }
         body { background: var(--dark); color: #f8fafc; font-family: 'Inter', system-ui, sans-serif; margin: 0; display: flex; flex-direction: column; }
         .glass { background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(24px); border: 1px solid rgba(255, 255, 255, 0.1); }
-        .btn-active:active { transform: scale(0.94); transition: transform 0.1s ease; }
+        .btn-active:active { transform: scale(0.92); transition: transform 0.1s cubic-bezier(0.17, 0.67, 0.83, 0.67); }
         #canvasMain { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
         #inputSurface { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 10; touch-action: none; }
         .pane { display: none; opacity: 0; height: 100%; flex-direction: column; }
-        .pane.active { display: flex; opacity: 1; animation: fadeIn 0.2s ease-out forwards; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .pane.active { display: flex; opacity: 1; animation: fadeIn 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .safe-top { padding-top: env(safe-area-inset-top); }
         .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
@@ -30,14 +30,18 @@
             font-family: inherit; user-select: text; touch-action: pan-y;
             caret-color: #818cf8; padding: 0; margin: 0; line-height: 1.6;
         }
+        .chip { transition: all 0.2s ease; cursor: pointer; border: 1px solid rgba(255,255,255,0.05); }
+        .chip.active { background: #818cf8 !important; color: white !important; border-color: rgba(255,255,255,0.2) !important; box-shadow: 0 4px 12px rgba(129, 140, 248, 0.3); }
         #guideContent { touch-action: pan-y; -webkit-overflow-scrolling: touch; }
         i { pointer-events: none; }
+        .log-btn span { transition: transform 0.1s ease; }
+        .log-btn:active span { transform: scale(1.2); }
     </style>
 </head>
 <body>
     <header id="appHeader" class="safe-top mx-4 mt-4 p-5 glass rounded-[32px] flex justify-between items-center z-50">
         <div class="flex items-center gap-3">
-            <div class="w-2.5 h-2.5 rounded-full bg-indigo-400"></div>
+            <div class="w-2.5 h-2.5 rounded-full bg-indigo-400 animate-pulse"></div>
             <span class="font-black italic text-sm uppercase tracking-wider">Luyo</span>
         </div>
         <div class="flex items-center gap-2 bg-white/5 rounded-full px-3 py-1.5 border border-white/5 relative z-[100]">
@@ -55,6 +59,7 @@
     </header>
 
     <main class="flex-1 relative px-4 py-4 overflow-hidden">
+        <!-- CANVAS PANE -->
         <div id="pane-interact" class="pane active">
             <div class="flex-1 glass rounded-[48px] relative overflow-hidden mb-4 min-h-[320px]">
                 <div id="templateLabel" class="absolute top-6 left-6 text-[10px] font-black uppercase tracking-widest opacity-20 pointer-events-none z-20">Blank Canvas</div>
@@ -84,52 +89,129 @@
             </div>
         </div>
 
+        <!-- DATA PANE -->
         <div id="pane-data" class="pane">
+            <div class="mb-4 space-y-3">
+                <div class="flex gap-2 overflow-x-auto no-scrollbar py-1">
+                    <div class="flex-shrink-0 text-[10px] font-bold uppercase opacity-30 self-center mr-2">Goal:</div>
+                    <div id="goal-container" class="flex gap-2">
+                        <button class="chip goal-chip px-4 py-2 rounded-full glass text-[11px] font-bold whitespace-nowrap" data-goal="Articulation">Articulation</button>
+                        <button class="chip goal-chip px-4 py-2 rounded-full glass text-[11px] font-bold whitespace-nowrap" data-goal="Phonology">Phonology</button>
+                        <button class="chip goal-chip px-4 py-2 rounded-full glass text-[11px] font-bold whitespace-nowrap" data-goal="Language">Language</button>
+                    </div>
+                    <button id="add-goal" class="px-4 py-2 rounded-full bg-white/10 border border-dashed border-white/20 text-[11px] font-bold whitespace-nowrap">+ Other</button>
+                </div>
+                <div class="flex gap-2 overflow-x-auto no-scrollbar py-1">
+                    <div class="flex-shrink-0 text-[10px] font-bold uppercase opacity-30 self-center mr-2">Level:</div>
+                    <div id="level-container" class="flex gap-2">
+                        <button class="chip level-chip px-3 py-1.5 rounded-lg glass text-[10px] font-bold" data-level="Isolation">Isolation</button>
+                        <button class="chip level-chip px-3 py-1.5 rounded-lg glass text-[10px] font-bold" data-level="Word">Word</button>
+                        <button class="chip level-chip px-3 py-1.5 rounded-lg glass text-[10px] font-bold" data-level="Sentence">Sentence</button>
+                    </div>
+                    <button id="add-level" class="px-3 py-1.5 rounded-lg bg-white/10 border border-dashed border-white/20 text-[10px] font-bold whitespace-nowrap">+ Other</button>
+                </div>
+            </div>
+
             <div class="grid grid-cols-2 gap-3 mb-4">
-                <button class="log-btn btn-active glass rounded-[32px] p-6 flex flex-col items-center justify-center border-b-4 border-emerald-500/20" data-id="ind">
-                    <span id="v-ind" class="text-4xl font-black text-emerald-400">0</span>
-                    <span class="text-[9px] font-black opacity-30 uppercase mt-1">Independent</span>
+                <button class="log-btn btn-active glass rounded-[24px] p-4 flex flex-col items-center justify-center border-b-4 border-emerald-500/20" data-id="ind">
+                    <span id="v-ind" class="text-3xl font-black text-emerald-400">0</span>
+                    <span class="text-[8px] font-black opacity-30 uppercase mt-1">Independent</span>
                 </button>
-                <button class="log-btn btn-active glass rounded-[32px] p-6 flex flex-col items-center justify-center border-b-4 border-indigo-500/20" data-id="prm">
-                    <span id="v-prm" class="text-4xl font-black text-indigo-400">0</span>
-                    <span class="text-[9px] font-black opacity-30 uppercase mt-1">Prompted</span>
+                <button class="log-btn btn-active glass rounded-[24px] p-4 flex flex-col items-center justify-center border-b-4 border-indigo-500/20" data-id="prm">
+                    <span id="v-prm" class="text-3xl font-black text-indigo-400">0</span>
+                    <span class="text-[8px] font-black opacity-30 uppercase mt-1">Prompted</span>
                 </button>
-                <button class="log-btn btn-active glass rounded-[32px] p-6 flex flex-col items-center justify-center border-b-4 border-orange-500/20" data-id="vis">
-                    <span id="v-vis" class="text-4xl font-black text-orange-400">0</span>
-                    <span class="text-[9px] font-black opacity-30 uppercase mt-1">Visual Cue</span>
+                <button class="log-btn btn-active glass rounded-[24px] p-4 flex flex-col items-center justify-center border-b-4 border-orange-500/20" data-id="vis">
+                    <span id="v-vis" class="text-3xl font-black text-orange-400">0</span>
+                    <span class="text-[8px] font-black opacity-30 uppercase mt-1">Visual Cue</span>
                 </button>
-                <button class="log-btn btn-active glass rounded-[32px] p-6 flex flex-col items-center justify-center border-b-4 border-rose-500/20" data-id="inc">
-                    <span id="v-inc" class="text-4xl font-black text-rose-400">0</span>
-                    <span class="text-[9px] font-black opacity-30 uppercase mt-1">Incorrect</span>
+                <button class="log-btn btn-active glass rounded-[24px] p-4 flex flex-col items-center justify-center border-b-4 border-rose-500/20" data-id="inc">
+                    <span id="v-inc" class="text-3xl font-black text-rose-400">0</span>
+                    <span class="text-[8px] font-black opacity-30 uppercase mt-1">Incorrect</span>
                 </button>
             </div>
-            <div class="flex-1 glass rounded-[40px] p-8 flex flex-col min-h-0">
+
+            <div class="flex gap-2 overflow-x-auto no-scrollbar mb-4 items-center">
+                <div class="flex-shrink-0 text-[10px] font-bold uppercase opacity-30 mr-2">Tags:</div>
+                <div id="tag-container" class="flex gap-2">
+                    <button class="chip tag-chip px-3 py-2 rounded-xl glass text-[9px] font-bold uppercase tracking-wider" data-tag="Self-Corrected">Self-Corrected</button>
+                    <button class="chip tag-chip px-3 py-2 rounded-xl glass text-[9px] font-bold uppercase tracking-wider" data-tag="Motivated">Motivated</button>
+                    <button class="chip tag-chip px-3 py-2 rounded-xl glass text-[9px] font-bold uppercase tracking-wider" data-tag="Fatigued">Fatigued</button>
+                </div>
+                <button id="add-tag" class="px-3 py-2 rounded-xl bg-white/10 border border-dashed border-white/20 text-[9px] font-bold whitespace-nowrap">+ Other</button>
+            </div>
+
+            <div class="flex-1 glass rounded-[40px] p-6 flex flex-col min-h-0">
                 <div class="flex justify-between items-center mb-2">
                     <span class="text-[10px] font-black opacity-20 uppercase tracking-widest">Session Intelligence</span>
                     <button id="clearSummary" class="text-[9px] font-black opacity-40 uppercase bg-white/5 px-2 py-1 rounded-lg">Clear All</button>
                 </div>
-                <textarea id="output" class="no-scrollbar text-[13px] font-medium" placeholder="Session data will appear here..."></textarea>
+                <textarea id="output" class="no-scrollbar text-[12px] font-medium" placeholder="Data summary will auto-generate..."></textarea>
             </div>
         </div>
 
+        <!-- GUIDE PANE -->
         <div id="pane-guide" class="pane">
             <div class="flex-1 glass rounded-[40px] p-6 flex flex-col min-h-0 overflow-hidden">
                 <div class="flex items-center justify-between gap-4 mb-4">
                     <div>
-                        <div class="text-[10px] font-black opacity-30 uppercase tracking-widest">Workspace Manual</div>
-                        <h1 class="text-2xl font-black tracking-tight mt-2">How to Use</h1>
+                        <div class="text-[10px] font-black opacity-30 uppercase tracking-widest">Manual</div>
+                        <h1 class="text-2xl font-black tracking-tight mt-2">App Introduction</h1>
                     </div>
                     <button id="backFromGuide" class="btn-active text-[12px] font-black uppercase tracking-wider px-4 py-2 rounded-full bg-white/10 border border-white/10">Back</button>
                 </div>
-                <div id="guideContent" class="flex-1 overflow-y-auto pr-2 text-[13px] leading-6 text-slate-200">
-                    <section class="mb-8">
-                        <h2 class="text-base font-bold mb-2 text-indigo-300">Quick Guide</h2>
-                        <ul class="space-y-4 opacity-80">
-                            <li><strong>Undo:</strong> Tap the orange arrow to remove lines one by one.</li>
-                            <li><strong>Layers:</strong> Cycle through Tic-Tac-Toe, Anatomy, and Lined Paper.</li>
-                            <li><strong>Data:</strong> Switch tabs to see automatic session accuracy calculations.</li>
-                        </ul>
-                    </section>
+                <div id="guideContent" class="flex-1 overflow-y-auto pr-2 text-[13px] leading-6 text-slate-200 no-scrollbar">
+                    <div class="space-y-8 pb-10">
+                        <section>
+                            <p class="opacity-70 italic mb-4">Luyo is an all-in-one clinical workspace designed for Speech-Language Pathologists to facilitate interactive therapy while automating data collection and documentation.</p>
+                            
+                            <h2 class="text-base font-bold mb-3 text-indigo-300 border-b border-white/10 pb-1">1. Interactive Canvas</h2>
+                            <p class="opacity-80 mb-2">The primary workspace allows for real-time visual feedback. Key features include:</p>
+                            <ul class="list-disc list-inside space-y-1 opacity-70 ml-2">
+                                <li><strong>Ink Pressure:</strong> Simulates natural writing weights based on touch pressure.</li>
+                                <li><strong>Templates:</strong> Cycle through 'Lined Paper', 'Phoneme Maps', and 'Task Strips' using the Layers icon.</li>
+                                <li><strong>History Control:</strong> Use Undo to revert recent strokes or Clear to reset the board.</li>
+                                <li><strong>Color Swatches:</strong> Switch between specialized colors for different clinical targets.</li>
+                            </ul>
+                        </section>
+
+                        <section>
+                            <h2 class="text-base font-bold mb-3 text-emerald-300 border-b border-white/10 pb-1">2. Clinical Data Logger</h2>
+                            <p class="opacity-80 mb-2">Navigate to the List icon to access the quantitative logging suite:</p>
+                            <ul class="list-disc list-inside space-y-1 opacity-70 ml-2">
+                                <li><strong>Trial Tracking:</strong> Tap cards to log Independent, Prompted, Visual Cue, or Incorrect responses.</li>
+                                <li><strong>Dynamic Metadata:</strong> Assign Goals (e.g., Articulation) and Levels (e.g., Word) to categorize data.</li>
+                                <li><strong>Contextual Tags:</strong> Apply behavioral tags like "Motivated" or "Fatigued" to add qualitative depth.</li>
+                                <li><strong>"+ Other" Button:</strong> Add custom goals, levels, or tags on the fly during a session.</li>
+                            </ul>
+                        </section>
+
+                        <section>
+                            <h2 class="text-base font-bold mb-3 text-amber-300 border-b border-white/10 pb-1">3. Session Intelligence</h2>
+                            <p class="opacity-80 mb-2">The auto-generating summary at the bottom of the Data pane synthesizes all interactions:</p>
+                            <ul class="list-disc list-inside space-y-1 opacity-70 ml-2">
+                                <li><strong>Statistical Analysis:</strong> Automatically calculates accuracy percentages and independence rates.</li>
+                                <li><strong>Prompt Breakdown:</strong> Distinguishes between verbal and visual prompt efficiency.</li>
+                                <li><strong>Editable Output:</strong> You can directly edit the clinical notes; the system will preserve your manual entries while updating the data blocks.</li>
+                            </ul>
+                        </section>
+
+                        <section>
+                            <h2 class="text-base font-bold mb-3 text-rose-300 border-b border-white/10 pb-1">4. Session Management</h2>
+                            <p class="opacity-80 mb-2">Global controls located in the top header:</p>
+                            <ul class="list-disc list-inside space-y-1 opacity-70 ml-2">
+                                <li><strong>Active Timer:</strong> Tracks total session duration for billing and focus analysis.</li>
+                                <li><strong>Pause/Resume:</strong> Toggle the timer for breaks or administrative pauses.</li>
+                                <li><strong>Reset:</strong> Zero out the session time for back-to-back appointments.</li>
+                                <li><strong>Clear All:</strong> Located in the Data pane, this wipes all trials and summaries to start fresh.</li>
+                            </ul>
+                        </section>
+                        
+                        <section>
+                            <h2 class="text-base font-bold mb-3 text-sky-300 border-b border-white/10 pb-1">5. Sound Deck</h2>
+                            <p class="opacity-80">Located at the bottom of the Canvas view, these high-contrast triggers play crisp phonemic models (S, R, L, TH) to provide consistent auditory targets for the client.</p>
+                        </section>
+                    </div>
                 </div>
             </div>
         </div>
@@ -141,146 +223,201 @@
     </nav>
 
     <script>
+        // State Proxy for Auto-Updates
+        const stateHandler = {
+            set(target, prop, value) {
+                target[prop] = value;
+                if (prop !== 'elapsed') updateSummary();
+                return true;
+            }
+        };
+
         const state = {
-            db: { trials: { ind: 0, prm: 0, vis: 0, inc: 0 }, ink: '#818cf8', elapsed: 0, timerActive: true },
+            db: new Proxy({ 
+                trials: new Proxy({ ind: 0, prm: 0, vis: 0, inc: 0 }, stateHandler), 
+                ink: '#818cf8', 
+                elapsed: 0, 
+                timerActive: true,
+                selectedGoal: null,
+                selectedLevel: null,
+                activeTags: new Set()
+            }, stateHandler),
             templateIndex: 0,
-            templates: ['Blank Canvas', 'Lined Paper', 'Tic-Tac-Toe', 'Oral Anatomy'],
+            templates: ['Blank Canvas', 'Lined Paper', 'Phoneme Map', 'Task Strip'],
             userHasEdited: false,
-            history: []
+            history: [] 
         };
 
         const cMain = document.getElementById('canvasMain');
-        const ctx = cMain.getContext('2d');
+        const ctx = cMain.getContext('2d', { alpha: true });
         const outputEl = document.getElementById('output');
         const inputSurface = document.getElementById('inputSurface');
 
-        function saveState() {
-            state.history.push(cMain.toDataURL());
-            if (state.history.length > 25) state.history.shift();
-        }
+        let isDrawing = false;
+        let lastPoint = null;
 
         function init() {
             lucide.createIcons();
             resize();
             bindEvents();
-            setInterval(() => { if (state.db.timerActive) { state.db.elapsed++; updateClock(); } }, 1000);
+            startTimer();
+            requestAnimationFrame(renderLoop);
+        }
+
+        function startTimer() {
+            setInterval(() => {
+                if (state.db.timerActive) {
+                    state.db.elapsed++;
+                    updateClock();
+                }
+            }, 1000);
+        }
+
+        function renderLoop() {
+            requestAnimationFrame(renderLoop);
+        }
+
+        function pushToHistory() {
+            state.history.push(cMain.toDataURL());
+            if (state.history.length > 20) state.history.shift();
         }
 
         function drawTemplate() {
-            const w = cMain.width / (window.devicePixelRatio || 1);
-            const h = cMain.height / (window.devicePixelRatio || 1);
+            const dpr = window.devicePixelRatio || 1;
+            const w = cMain.width / dpr;
+            const h = cMain.height / dpr;
             ctx.save();
             ctx.setLineDash([]);
             if (state.templateIndex === 1) { 
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
-                ctx.lineWidth = 1;
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)'; ctx.lineWidth = 1;
                 for (let i = 40; i < h; i += 40) { ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(w, i); ctx.stroke(); }
             } else if (state.templateIndex === 2) { 
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
-                ctx.lineWidth = 3;
-                const size = Math.min(w, h) * 0.6;
-                const offsetX = (w - size) / 2;
-                const offsetY = (h - size) / 2;
-                for (let i = 1; i < 3; i++) {
-                    ctx.beginPath(); ctx.moveTo(offsetX + (size/3)*i, offsetY); ctx.lineTo(offsetX + (size/3)*i, offsetY + size); ctx.stroke();
-                    ctx.beginPath(); ctx.moveTo(offsetX, offsetY + (size/3)*i); ctx.lineTo(offsetX + size, offsetY + (size/3)*i); ctx.stroke();
-                }
+                const sounds = [['p', 'b', 'm', 'w'], ['t', 'd', 'n', 'l'], ['k', 'g', 'f', 'v'], ['s', 'z', 'sh', 'ch'], ['th', 'r', 'j', 'h']];
+                const rows = sounds.length; const cols = sounds[0].length;
+                const cellW = w / cols; const cellH = h / rows;
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)'; ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+                ctx.font = '700 24px Inter'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                for(let r = 0; r < rows; r++) for(let c = 0; c < cols; c++) { ctx.strokeRect(c * cellW, r * cellH, cellW, cellH); ctx.fillText(sounds[r][c].toUpperCase(), (c * cellW) + (cellW/2), (r * cellH) + (cellH/2)); }
             } else if (state.templateIndex === 3) {
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.arc(w/2, h/2 - 20, 60, 0, Math.PI, true); 
-                ctx.moveTo(w/2 - 60, h/2 - 20); ctx.quadraticCurveTo(w/2, h/2 + 80, w/2 + 60, h/2 - 20);
-                ctx.stroke();
+                const steps = 4; const padding = 40; const boxW = (w - (padding * (steps + 1))) / steps; const boxH = 120; const y = (h / 2) - (boxH / 2);
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)'; ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+                for(let i = 0; i < steps; i++) {
+                    const x = padding + (i * (boxW + padding)); ctx.beginPath(); ctx.roundRect(x, y, boxW, boxH, 12); ctx.fill(); ctx.stroke();
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.2)'; ctx.font = '900 12px Inter'; ctx.fillText(`STEP ${i+1}`, x + (boxW/2), y - 15);
+                }
             }
             ctx.restore();
             document.getElementById('templateLabel').innerText = state.templates[state.templateIndex];
         }
 
-        function playNaturalSpeech(text) {
-            window.speechSynthesis.cancel();
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.rate = 0.9;
-            window.speechSynthesis.speak(utterance);
-        }
-
         function bindEvents() {
             document.querySelectorAll('.snd-btn').forEach(btn => {
-                btn.onpointerdown = () => playNaturalSpeech(btn.dataset.speech);
+                btn.onpointerdown = () => { window.speechSynthesis.cancel(); window.speechSynthesis.speak(new SpeechSynthesisUtterance(btn.dataset.speech)); };
             });
 
-            document.getElementById('toggleTimer').onclick = () => {
-                state.db.timerActive = !state.db.timerActive;
-                document.getElementById('playPauseIcon').setAttribute('data-lucide', state.db.timerActive ? 'pause' : 'play');
-                lucide.createIcons();
-            };
+            document.getElementById('add-goal').onclick = () => { const c = prompt("Enter goal:"); if(c) addDynamicChip('goal', c); };
+            document.getElementById('add-level').onclick = () => { const c = prompt("Enter level:"); if(c) addDynamicChip('level', c); };
+            document.getElementById('add-tag').onclick = () => { const c = prompt("Enter tag:"); if(c) addDynamicChip('tag', c); };
 
+            function addDynamicChip(type, label) {
+                const container = document.getElementById(`${type}-container`);
+                const btn = document.createElement('button');
+                const isTag = type === 'tag';
+                btn.className = `chip ${type}-chip px-3 py-2 ${isTag ? 'rounded-xl' : 'rounded-full'} glass text-[10px] font-bold whitespace-nowrap active`;
+                btn.innerText = label;
+                btn.onclick = () => handleChipClick(btn, type, label);
+                if (!isTag) document.querySelectorAll(`.${type}-chip`).forEach(x => x.classList.remove('active'));
+                container.appendChild(btn);
+                handleChipClick(btn, type, label, true);
+            }
+
+            function handleChipClick(el, type, val, force = false) {
+                if (type === 'tag') {
+                    if (state.db.activeTags.has(val) && !force) {
+                        state.db.activeTags.delete(val);
+                        el.classList.remove('active');
+                    } else {
+                        state.db.activeTags.add(val);
+                        el.classList.add('active');
+                    }
+                } else {
+                    document.querySelectorAll(`.${type}-chip`).forEach(x => x.classList.remove('active'));
+                    el.classList.add('active');
+                    if (type === 'goal') state.db.selectedGoal = val;
+                    if (type === 'level') state.db.selectedLevel = val;
+                }
+                updateSummary();
+            }
+
+            document.querySelectorAll('.chip').forEach(c => {
+                const type = c.classList.contains('goal-chip') ? 'goal' : c.classList.contains('level-chip') ? 'level' : 'tag';
+                const val = c.dataset[type] || c.innerText;
+                c.onclick = () => handleChipClick(c, type, val);
+            });
+
+            document.getElementById('toggleTimer').onclick = () => { state.db.timerActive = !state.db.timerActive; document.getElementById('playPauseIcon').setAttribute('data-lucide', state.db.timerActive ? 'pause' : 'play'); lucide.createIcons(); };
             document.getElementById('resetTimer').onclick = () => { state.db.elapsed = 0; updateClock(); };
+            
             outputEl.addEventListener('input', () => { state.userHasEdited = true; });
-
             document.getElementById('clearSummary').onclick = () => {
-                state.db.trials = { ind: 0, prm: 0, vis: 0, inc: 0 };
+                state.db.trials.ind = 0; state.db.trials.prm = 0; state.db.trials.vis = 0; state.db.trials.inc = 0;
+                state.db.activeTags.clear(); state.db.selectedGoal = null; state.db.selectedLevel = null;
+                document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
                 document.querySelectorAll('.log-btn span[id^="v-"]').forEach(s => s.innerText = '0');
-                state.userHasEdited = false;
-                outputEl.value = "";
+                state.userHasEdited = false; outputEl.value = "";
             };
 
-            document.getElementById('toggleTemplate').onclick = () => {
-                state.templateIndex = (state.templateIndex + 1) % state.templates.length;
-                state.history = []; 
-                ctx.clearRect(0,0,cMain.width,cMain.height);
-                drawTemplate();
-            };
+            document.getElementById('toggleTemplate').onclick = () => { state.templateIndex = (state.templateIndex + 1) % state.templates.length; state.history = []; ctx.clearRect(0,0,cMain.width,cMain.height); drawTemplate(); };
+            
+            inputSurface.addEventListener('pointerdown', (e) => {
+                pushToHistory();
+                isDrawing = true;
+                const r = inputSurface.getBoundingClientRect();
+                lastPoint = { x: e.clientX - r.left, y: e.clientY - r.top };
+                ctx.beginPath();
+                ctx.moveTo(lastPoint.x, lastPoint.y);
+            });
 
-            let drawing = false;
-            inputSurface.onpointerdown = (e) => { 
-                saveState();
-                drawing = true; 
-                inputSurface.setPointerCapture(e.pointerId); 
-                const rect = inputSurface.getBoundingClientRect();
-                ctx.beginPath(); 
-                ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top); 
-            };
-            inputSurface.onpointermove = (e) => { 
-                if(!drawing) return; 
-                const rect = inputSurface.getBoundingClientRect();
-                ctx.lineWidth = 2 + (e.pressure * 18); 
-                ctx.strokeStyle = state.db.ink; 
-                ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top); 
-                ctx.stroke(); 
-            };
-            inputSurface.onpointerup = () => drawing = false;
+            inputSurface.addEventListener('pointermove', (e) => {
+                if (!isDrawing) return;
+                const r = inputSurface.getBoundingClientRect();
+                const currentPoint = { x: e.clientX - r.left, y: e.clientY - r.top };
+                ctx.lineWidth = 2 + (e.pressure * 14);
+                ctx.strokeStyle = state.db.ink;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.quadraticCurveTo(lastPoint.x, lastPoint.y, (lastPoint.x + currentPoint.x) / 2, (lastPoint.y + currentPoint.y) / 2);
+                ctx.stroke();
+                lastPoint = currentPoint;
+            });
 
-            document.getElementById('clearInk').onclick = () => { 
-                saveState();
-                ctx.clearRect(0,0,cMain.width,cMain.height); 
-                drawTemplate(); 
-            };
+            inputSurface.addEventListener('pointerup', () => { isDrawing = false; lastPoint = null; });
+            inputSurface.addEventListener('pointerleave', () => { isDrawing = false; });
 
+            document.getElementById('clearInk').onclick = () => { pushToHistory(); ctx.clearRect(0,0,cMain.width,cMain.height); drawTemplate(); };
             document.getElementById('undoInk').onclick = () => {
                 if (state.history.length > 0) {
-                    let prev = new Image();
-                    prev.src = state.history.pop();
-                    prev.onload = () => {
-                        ctx.clearRect(0, 0, cMain.width, cMain.height);
-                        ctx.drawImage(prev, 0, 0, cMain.width / (window.devicePixelRatio || 1), cMain.height / (window.devicePixelRatio || 1));
-                        drawTemplate();
-                    }
+                    const img = new Image();
+                    img.src = state.history.pop();
+                    img.onload = () => { 
+                        ctx.clearRect(0, 0, cMain.width, cMain.height); 
+                        ctx.drawImage(img, 0, 0, cMain.width / (window.devicePixelRatio || 1), cMain.height / (window.devicePixelRatio || 1)); 
+                        drawTemplate(); 
+                    };
                 }
             };
             
-            document.querySelectorAll('.clr-dot').forEach(d => d.onclick = () => {
-                state.db.ink = d.dataset.color;
-                document.querySelectorAll('.clr-dot').forEach(c => c.classList.remove('ring-white/60'));
-                d.classList.add('ring-white/60');
+            document.querySelectorAll('.clr-dot').forEach(d => d.onclick = () => { 
+                state.db.ink = d.dataset.color; 
+                document.querySelectorAll('.clr-dot').forEach(c => c.classList.remove('ring-white/60')); 
+                d.classList.add('ring-white/60'); 
             });
 
-            document.querySelectorAll('.log-btn').forEach(b => {
+            document.querySelectorAll('.log-btn').forEach(b => { 
                 b.onclick = () => { 
                     state.db.trials[b.dataset.id]++; 
-                    document.getElementById(`v-${b.dataset.id}`).innerText = state.db.trials[b.dataset.id];
-                    updateSummary(); 
-                };
+                    document.getElementById(`v-${b.dataset.id}`).innerText = state.db.trials[b.dataset.id]; 
+                }; 
             });
 
             document.getElementById('openGuide').onclick = () => setView('guide');
@@ -296,32 +433,43 @@
         function updateSummary() {
             const { ind, prm, vis, inc } = state.db.trials;
             const total = ind + prm + vis + inc;
-            if (total === 0) return;
-            const indRate = Math.round((ind / (total || 1)) * 100);
-            const succRate = Math.round(((ind + prm + vis) / (total || 1)) * 100);
-            const divider = "--------------------------------";
-            const assistText = `SESSION DATA:\n• Trials: ${total} total\n• Independence: ${indRate}%\n• Accuracy: ${succRate}%\n• Time: ${document.getElementById('clock').innerText}\n${divider}`;
+            if (total === 0 && !state.db.selectedGoal) return;
+            
+            const indRate = total > 0 ? Math.round((ind / total) * 100) : 0;
+            const succRate = total > 0 ? Math.round(((ind + prm + vis) / total) * 100) : 0;
+            const prmRate = total > 0 ? Math.round((prm / total) * 100) : 0;
+            const visRate = total > 0 ? Math.round((vis / total) * 100) : 0;
 
-            if (!state.userHasEdited) {
-                outputEl.value = `${assistText}\n\nNotes:`;
-                return;
-            }
-            const currentText = outputEl.value;
-            const splitIdx = currentText.indexOf(divider);
-            if (splitIdx !== -1) {
-                const userNotes = currentText.substring(splitIdx + divider.length).trimStart();
-                outputEl.value = `${assistText}\n${userNotes}`;
+            const tagsStr = Array.from(state.db.activeTags).join(', ');
+            const div = "--------------------------------";
+            let txt = `SESSION SUMMARY:\n`;
+            if (state.db.selectedGoal) txt += `• Target: ${state.db.selectedGoal}${state.db.selectedLevel ? ` (${state.db.selectedLevel})` : ''}\n`;
+            txt += `• Overall Accuracy: ${succRate}%\n`;
+            txt += `• Independence: ${indRate}% independent\n`;
+            if (prm > 0 || vis > 0) txt += `• Prompt Breakdown: ${prmRate}% Verbal, ${visRate}% Visual\n`;
+            txt += `• Trial Count: ${total} total\n`;
+            if (tagsStr) txt += `• Observations: ${tagsStr}\n`;
+            txt += `• Session Time: ${document.getElementById('clock').innerText}\n${div}`;
+
+            if (!state.userHasEdited) { 
+                outputEl.value = `${txt}\n\nClinical Notes:`; 
             } else {
-                outputEl.value = `${assistText}\n${currentText}`;
+                const cur = outputEl.value; 
+                const idx = cur.indexOf(div);
+                if (idx !== -1) outputEl.value = `${txt}\n${cur.substring(idx + div.length).trimStart()}`;
+                else outputEl.value = `${txt}\n${cur}`;
             }
         }
 
         function resize() {
             const dpr = window.devicePixelRatio || 1;
-            const rect = cMain.parentElement.getBoundingClientRect();
-            cMain.width = rect.width * dpr; cMain.height = rect.height * dpr;
+            const container = cMain.parentElement;
+            if (!container) return;
+            const rect = container.getBoundingClientRect();
+            cMain.width = rect.width * dpr; 
+            cMain.height = rect.height * dpr;
             ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-            ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = state.db.ink;
+            ctx.lineCap = 'round'; ctx.lineJoin = 'round';
             drawTemplate();
         }
 
