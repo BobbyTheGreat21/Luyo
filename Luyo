@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Luyo | Clinical Workspace</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root { --primary: #818cf8; --dark: #020617; }
+        * { -webkit-font-smoothing: antialiased; box-sizing: border-box; user-select: none; touch-action: none; -webkit-tap-highlight-color: transparent; }
+        body { background: var(--dark); color: #f8fafc; font-family: 'Inter', system-ui, sans-serif; height: 100dvh; overflow: hidden; margin: 0; display: flex; flex-direction: column; }
+        .glass { background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(24px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .btn-active:active { transform: scale(0.94); transition: transform 0.1s ease; }
+        #canvasMain { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+        #inputSurface { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; }
+        .pane { display: none; opacity: 0; height: 100%; flex-direction: column; }
+        .pane.active { display: flex; opacity: 1; animation: fadeIn 0.2s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .safe-top { padding-top: env(safe-area-inset-top); }
+        .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+        
+        #output { 
+            background: transparent; border: none; outline: none; resize: none; 
+            width: 100%; height: 100%; color: rgba(248, 250, 252, 0.9);
+            font-family: inherit; user-select: text; touch-action: auto;
+            caret-color: #818cf8;
+            padding: 0; margin: 0;
+            line-height: 1.6;
+        }
+        i { pointer-events: none; }
+    </style>
+</head>
+<body>
+    <header id="appHeader" class="safe-top mx-4 mt-4 p-5 glass rounded-[32px] flex justify-between items-center z-50">
+        <div class="flex items-center gap-3">
+            <div class="w-2.5 h-2.5 rounded-full bg-indigo-400"></div>
+            <span class="font-black italic text-sm uppercase tracking-wider">Luyo</span>
+        </div>
+        
+        <div class="flex items-center gap-2 bg-white/5 rounded-full px-3 py-1.5 border border-white/5 relative z-[100]">
+            <button id="toggleTimer" class="btn-active p-1 flex items-center justify-center">
+                <i id="playPauseIcon" data-lucide="pause" class="w-3.5 h-3.5 text-indigo-300"></i>
+            </button>
+            <div id="clock" class="font-mono text-[11px] opacity-80 tabular-nums min-w-[35px] text-center">00:00</div>
+            <button id="resetTimer" class="btn-active p-1 flex items-center justify-center">
+                <i data-lucide="rotate-ccw" class="w-3.5 h-3.5 text-rose-400/60"></i>
+            </button>
+        </div>
+
+        <div class="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center">
+            <i data-lucide="mic-2" class="w-4 h-4 opacity-40"></i>
+        </div>
+    </header>
+
+    <main class="flex-1 relative px-4 py-4 overflow-hidden">
+        <div id="pane-interact" class="pane active">
+            <div class="flex-1 glass rounded-[48px] relative overflow-hidden mb-4">
+                <canvas id="canvasMain"></canvas>
+                <div id="inputSurface"></div>
+                <div class="absolute bottom-6 left-6 flex gap-4 z-20">
+                    <button id="clearInk" class="btn-active w-14 h-14 glass rounded-2xl flex items-center justify-center text-rose-400">
+                        <i data-lucide="eraser"></i>
+                    </button>
+                    <div class="flex gap-3">
+                        <button class="clr-dot btn-active w-14 h-14 rounded-2xl bg-orange-400 ring-4 ring-white/60" data-color="#fb923c"></button>
+                        <button class="clr-dot btn-active w-14 h-14 rounded-2xl bg-indigo-400 ring-4 ring-transparent" data-color="#818cf8"></button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-4 gap-3 h-24">
+                <button class="snd-btn btn-active glass rounded-2xl font-black text-xl text-indigo-300" data-speech="Sssssssss">S</button>
+                <button class="snd-btn btn-active glass rounded-2xl font-black text-xl text-indigo-300" data-speech="Rrrrrrrr">R</button>
+                <button class="snd-btn btn-active glass rounded-2xl font-black text-xl text-indigo-300" data-speech="Lllllll">L</button>
+                <button class="snd-btn btn-active glass rounded-2xl font-black text-xl text-indigo-300" data-speech="Thhhhhhh">TH</button>
+            </div>
+        </div>
+
+        <div id="pane-data" class="pane">
+            <div class="grid grid-cols-2 gap-3 mb-4">
+                <button class="log-btn btn-active glass rounded-[32px] p-6 flex flex-col items-center justify-center border-b-4 border-emerald-500/20" data-id="ind">
+                    <span id="v-ind" class="text-4xl font-black text-emerald-400">0</span>
+                    <span class="text-[9px] font-black opacity-30 uppercase mt-1">Independent</span>
+                </button>
+                <button class="log-btn btn-active glass rounded-[32px] p-6 flex flex-col items-center justify-center border-b-4 border-indigo-500/20" data-id="prm">
+                    <span id="v-prm" class="text-4xl font-black text-indigo-400">0</span>
+                    <span class="text-[9px] font-black opacity-30 uppercase mt-1">Prompted</span>
+                </button>
+                <button class="log-btn btn-active glass rounded-[32px] p-6 flex flex-col items-center justify-center border-b-4 border-orange-500/20" data-id="vis">
+                    <span id="v-vis" class="text-4xl font-black text-orange-400">0</span>
+                    <span class="text-[9px] font-black opacity-30 uppercase mt-1">Visual Cue</span>
+                </button>
+                <button class="log-btn btn-active glass rounded-[32px] p-6 flex flex-col items-center justify-center border-b-4 border-rose-500/20" data-id="inc">
+                    <span id="v-inc" class="text-4xl font-black text-rose-400">0</span>
+                    <span class="text-[9px] font-black opacity-30 uppercase mt-1">Incorrect</span>
+                </button>
+            </div>
+            <div class="flex-1 glass rounded-[40px] p-8 flex flex-col min-h-0">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-[10px] font-black opacity-20 uppercase tracking-widest">Session Intelligence</span>
+                    <button id="clearSummary" class="text-[9px] font-black opacity-40 uppercase bg-white/5 px-2 py-1 rounded-lg">Clear All</button>
+                </div>
+                <textarea id="output" class="no-scrollbar text-[13px] font-medium" placeholder="Session data will appear here as you log trials..."></textarea>
+            </div>
+        </div>
+    </main>
+
+    <nav id="mainNav" class="safe-bottom flex justify-around pb-10 pt-2 transition-transform duration-300">
+        <button onclick="setView('interact')" id="nav-interact" class="btn-active text-indigo-400"><i data-lucide="brush" class="w-8 h-8"></i></button>
+        <button onclick="setView('data')" id="nav-data" class="btn-active opacity-30"><i data-lucide="layout-list" class="w-8 h-8"></i></button>
+    </nav>
+
+    <script>
+        const apiKey = "";
+        const state = { 
+            db: { trials: { ind: 0, prm: 0, vis: 0, inc: 0 }, ink: '#818cf8', elapsed: 0, timerActive: true }, 
+            ac: null,
+            voiceCache: {},
+            userHasEdited: false
+        };
+
+        const cMain = document.getElementById('canvasMain'); 
+        const ctx = cMain.getContext('2d');
+        const outputEl = document.getElementById('output');
+
+        function init() { 
+            lucide.createIcons(); 
+            resize(); 
+            bindEvents();
+            setInterval(() => { if(state.db.timerActive) { state.db.elapsed++; updateClock(); } }, 1000);
+            
+            const unlock = () => { if (!state.ac) state.ac = new (window.AudioContext || window.webkitAudioContext)(); };
+            window.addEventListener('pointerdown', unlock);
+        }
+
+        function resize() { 
+            const dpr = window.devicePixelRatio || 1; 
+            const rect = cMain.parentElement.getBoundingClientRect();
+            if(!rect.width) return;
+            cMain.width = rect.width * dpr; cMain.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
+            ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = state.db.ink;
+        }
+
+        function pcmToWav(pcmData, sampleRate) {
+            const buffer = new ArrayBuffer(44 + pcmData.length * 2);
+            const view = new DataView(buffer);
+            const writeStr = (off, s) => { for (let i = 0; i < s.length; i++) view.setUint8(off + i, s.charCodeAt(i)); };
+            writeStr(0, 'RIFF'); view.setUint32(4, 32 + pcmData.length * 2, true); writeStr(8, 'WAVE');
+            writeStr(12, 'fmt '); view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, 1, true);
+            view.setUint32(24, sampleRate, true); view.setUint32(28, sampleRate * 2, true); view.setUint16(32, 2, true);
+            view.setUint16(34, 16, true); writeStr(36, 'data'); view.setUint32(40, pcmData.length * 2, true);
+            for (let i = 0; i < pcmData.length; i++) view.setInt16(44 + i * 2, pcmData[i], true);
+            return new Blob([buffer], { type: 'audio/wav' });
+        }
+
+        async function playNaturalSpeech(text) {
+            if (state.voiceCache[text]) { new Audio(state.voiceCache[text]).play(); return; }
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: `Say clearly: ${text}` }] }],
+                        generationConfig: { 
+                            responseModalities: ["AUDIO"], 
+                            speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } } } 
+                        }
+                    })
+                });
+                const res = await response.json();
+                const pcmB64 = res.candidates[0].content.parts[0].inlineData.data;
+                const bin = atob(pcmB64);
+                const pcm = new Int16Array(bin.length / 2);
+                for (let i = 0; i < pcm.length; i++) pcm[i] = (bin.charCodeAt(i * 2 + 1) << 8) | bin.charCodeAt(i * 2);
+                const url = URL.createObjectURL(pcmToWav(pcm, 24000));
+                state.voiceCache[text] = url;
+                new Audio(url).play();
+            } catch (e) { console.error(e); }
+        }
+
+        function bindEvents() {
+            document.querySelectorAll('.snd-btn').forEach(btn => {
+                btn.onpointerdown = () => playNaturalSpeech(btn.dataset.speech);
+            });
+
+            document.getElementById('toggleTimer').onclick = () => {
+                state.db.timerActive = !state.db.timerActive;
+                document.getElementById('playPauseIcon').setAttribute('data-lucide', state.db.timerActive ? 'pause' : 'play');
+                lucide.createIcons();
+            };
+
+            document.getElementById('resetTimer').onclick = () => {
+                state.db.elapsed = 0;
+                updateClock();
+            };
+
+            outputEl.addEventListener('input', () => {
+                state.userHasEdited = true;
+            });
+
+            document.getElementById('clearSummary').onclick = () => {
+                state.db.trials = { ind: 0, prm: 0, vis: 0, inc: 0 };
+                document.querySelectorAll('.log-btn span[id^="v-"]').forEach(s => s.innerText = '0');
+                state.userHasEdited = false;
+                outputEl.value = "";
+            };
+
+            let drawing = false;
+            const surf = document.getElementById('inputSurface');
+            surf.onpointerdown = (e) => { drawing = true; surf.setPointerCapture(e.pointerId); ctx.beginPath(); ctx.moveTo(e.offsetX, e.offsetY); };
+            surf.onpointermove = (e) => { if(!drawing) return; ctx.lineWidth = 1 + (e.pressure * 20); ctx.strokeStyle = state.db.ink; ctx.lineTo(e.offsetX, e.offsetY); ctx.stroke(); };
+            surf.onpointerup = () => drawing = false;
+
+            document.getElementById('clearInk').onclick = () => ctx.clearRect(0,0,cMain.width,cMain.height);
+            document.querySelectorAll('.clr-dot').forEach(d => d.onclick = () => {
+                state.db.ink = d.dataset.color;
+                document.querySelectorAll('.clr-dot').forEach(c => c.classList.remove('ring-white/60'));
+                d.classList.add('ring-white/60');
+            });
+
+            document.querySelectorAll('.log-btn').forEach(b => {
+                b.onclick = () => { 
+                    state.db.trials[b.dataset.id]++; 
+                    document.getElementById(`v-${b.dataset.id}`).innerText = state.db.trials[b.dataset.id]; 
+                    updateSummary(); 
+                };
+            });
+        }
+
+        function updateClock() {
+            const m = Math.floor(state.db.elapsed/60).toString().padStart(2,'0');
+            const s = (state.db.elapsed%60).toString().padStart(2,'0');
+            document.getElementById('clock').innerText = `${m}:${s}`;
+        }
+
+        function updateSummary() {
+            const { ind, prm, vis, inc } = state.db.trials;
+            const total = ind + prm + vis + inc;
+            if (total === 0) return;
+
+            const indRate = Math.round((ind / (total || 1)) * 100);
+            const succRate = Math.round(((ind + prm + vis) / (total || 1)) * 100);
+            const divider = "--------------------------------";
+            
+            const assistText = `SESSION DATA:
+• Trials: ${total} total
+• Independence: ${indRate}% (${ind} unassisted)
+• Accuracy: ${succRate}% (with cues)
+• Breakdown: ${prm} Prompts, ${vis} Visuals, ${inc} Incorrect.
+• Time: ${document.getElementById('clock').innerText}\n${divider}`;
+
+            if (!state.userHasEdited) {
+                outputEl.value = assistText + "\n\nObservations:";
+            } else {
+                const currentText = outputEl.value;
+                const splitIdx = currentText.indexOf(divider);
+                if (splitIdx !== -1) {
+                    const userNotes = currentText.substring(splitIdx + divider.length);
+                    outputEl.value = assistText + userNotes;
+                } else {
+                    // Fallback if user deleted the divider
+                    outputEl.value = assistText + "\n" + currentText;
+                }
+            }
+        }
+
+        function setView(id) {
+            document.querySelectorAll('.pane').forEach(p => p.classList.remove('active'));
+            document.getElementById(`pane-${id}`).classList.add('active');
+            document.querySelectorAll('nav button').forEach(b => b.classList.add('opacity-30'));
+            document.getElementById(`nav-${id}`).classList.remove('opacity-30');
+            if (id === 'interact') setTimeout(resize, 50);
+        }
+
+        window.onload = init;
+        window.onresize = resize;
+    </script>
+</body>
+</html>
