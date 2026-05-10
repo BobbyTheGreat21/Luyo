@@ -26,7 +26,7 @@
         .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
         #output {
             background: transparent; border: none; outline: none; resize: none;
-            width: 100%; height: 100%; color: rgba(248, 250, 252, 0.9);
+            width: 100%; height: 100%; color: rgba(248, 250, 252, 0.94);
             font-family: inherit; user-select: text; touch-action: auto;
             caret-color: #818cf8; padding: 0; margin: 0; line-height: 1.6;
         }
@@ -104,7 +104,7 @@
                     <span class="text-[10px] font-black opacity-20 uppercase tracking-widest">Session Intelligence</span>
                     <button id="clearSummary" class="text-[9px] font-black opacity-40 uppercase bg-white/5 px-2 py-1 rounded-lg">Clear All</button>
                 </div>
-                <textarea id="output" class="no-scrollbar text-[13px] font-medium" placeholder="Session data will appear here as you log trials..."></textarea>
+                <textarea id="output" class="no-scrollbar text-[13px] font-medium" placeholder="Session data will appear here..."></textarea>
             </div>
         </div>
 
@@ -124,11 +124,7 @@
                     </section>
                     <section class="mb-6">
                         <h2 class="text-base font-bold mb-1 text-indigo-300">2. Tracking Trials</h2>
-                        <p>Logging a trial in the <strong>Data</strong> tab automatically calculates Independence % and Accuracy. It formats a summary at the top of your notes.</p>
-                    </section>
-                    <section class="mb-6">
-                        <h2 class="text-base font-bold mb-1 text-indigo-300">3. Preserving Notes</h2>
-                        <p>Type your observations below the dashed line. Your notes stay intact even as you continue logging new trials.</p>
+                        <p>Logging a trial in the <strong>Data</strong> tab automatically calculates stats. Your manual notes are preserved below the divider line.</p>
                     </section>
                 </div>
             </div>
@@ -145,7 +141,6 @@
             db: { trials: { ind: 0, prm: 0, vis: 0, inc: 0 }, ink: '#818cf8', elapsed: 0, timerActive: true },
             templateIndex: 0,
             templates: ['Blank Canvas', 'Lined Paper', 'Tic-Tac-Toe', 'Oral Anatomy'],
-            ac: null,
             userHasEdited: false
         };
 
@@ -159,8 +154,7 @@
             resize();
             bindEvents();
             setInterval(() => { if (state.db.timerActive) { state.db.elapsed++; updateClock(); } }, 1000);
-            const unlock = () => { if (!state.ac) state.ac = new (window.AudioContext || window.webkitAudioContext)(); };
-            window.addEventListener('pointerdown', unlock, { once: true });
+            window.addEventListener('touchstart', () => { window.speechSynthesis.speak(new SpeechSynthesisUtterance("")); }, { once: true });
         }
 
         function drawTemplate() {
@@ -217,7 +211,7 @@
             };
 
             document.getElementById('resetTimer').onclick = () => { state.db.elapsed = 0; updateClock(); };
-
+            
             outputEl.addEventListener('input', () => { state.userHasEdited = true; });
 
             document.getElementById('clearSummary').onclick = () => {
@@ -234,11 +228,28 @@
             };
 
             let drawing = false;
-            inputSurface.onpointerdown = (e) => { drawing = true; inputSurface.setPointerCapture(e.pointerId); ctx.beginPath(); ctx.moveTo(e.offsetX, e.offsetY); };
-            inputSurface.onpointermove = (e) => { if(!drawing) return; ctx.lineWidth = 1 + (e.pressure * 20); ctx.strokeStyle = state.db.ink; ctx.lineTo(e.offsetX, e.offsetY); ctx.stroke(); };
+            inputSurface.onpointerdown = (e) => { 
+                drawing = true; 
+                inputSurface.setPointerCapture(e.pointerId); 
+                const rect = inputSurface.getBoundingClientRect();
+                ctx.beginPath(); 
+                ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top); 
+            };
+            inputSurface.onpointermove = (e) => { 
+                if(!drawing) return; 
+                const rect = inputSurface.getBoundingClientRect();
+                ctx.lineWidth = 2 + (e.pressure * 18); 
+                ctx.strokeStyle = state.db.ink; 
+                ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top); 
+                ctx.stroke(); 
+            };
             inputSurface.onpointerup = () => drawing = false;
 
-            document.getElementById('clearInk').onclick = () => { ctx.clearRect(0,0,cMain.width,cMain.height); drawTemplate(); };
+            document.getElementById('clearInk').onclick = () => { 
+                ctx.clearRect(0,0,cMain.width,cMain.height); 
+                drawTemplate(); 
+            };
+            
             document.querySelectorAll('.clr-dot').forEach(d => d.onclick = () => {
                 state.db.ink = d.dataset.color;
                 document.querySelectorAll('.clr-dot').forEach(c => c.classList.remove('ring-white/60'));
@@ -263,7 +274,7 @@
             document.getElementById('clock').innerText = `${m}:${s}`;
         }
 
-        // RESTORED ORIGINAL SUMMARY LOGIC
+        // --- ORIGINAL LOGIC RESTORED 1:1 ---
         function updateSummary() {
             const { ind, prm, vis, inc } = state.db.trials;
             const total = ind + prm + vis + inc;
@@ -281,16 +292,17 @@
 • Time: ${document.getElementById('clock').innerText}\n${divider}`;
 
             if (!state.userHasEdited) {
-                outputEl.value = assistText + "\n\nObservations:";
+                outputEl.value = `${assistText}\n\nObservations:`;
+                return;
+            }
+
+            const currentText = outputEl.value;
+            const splitIdx = currentText.indexOf(divider);
+            if (splitIdx !== -1) {
+                const userNotes = currentText.substring(splitIdx + divider.length).trimStart();
+                outputEl.value = `${assistText}\n${userNotes}`;
             } else {
-                const currentText = outputEl.value;
-                const splitIdx = currentText.indexOf(divider);
-                if (splitIdx !== -1) {
-                    const userNotes = currentText.substring(splitIdx + divider.length);
-                    outputEl.value = assistText + userNotes;
-                } else {
-                    outputEl.value = assistText + "\n" + currentText;
-                }
+                outputEl.value = `${assistText}\n${currentText}`;
             }
         }
 
@@ -299,7 +311,7 @@
             const rect = cMain.parentElement.getBoundingClientRect();
             if(!rect.width) return;
             cMain.width = rect.width * dpr; cMain.height = rect.height * dpr;
-            ctx.scale(dpr, dpr);
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
             ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = state.db.ink;
             drawTemplate();
         }
@@ -308,8 +320,8 @@
             document.querySelectorAll('.pane').forEach(p => p.classList.remove('active'));
             document.getElementById(`pane-${id}`).classList.add('active');
             document.querySelectorAll('nav button').forEach(b => b.classList.add('opacity-30'));
-            if(id !== 'guide') document.getElementById(`nav-${id}`).classList.remove('opacity-30');
-            if (id === 'interact') setTimeout(resize, 50);
+            if(id === 'interact' || id === 'data') document.getElementById(`nav-${id}`).classList.remove('opacity-30');
+            if (id === 'interact') setTimeout(resize, 80);
         }
 
         window.onload = init;
