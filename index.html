@@ -26,7 +26,7 @@
         .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
         #output {
             background: transparent; border: none; outline: none; resize: none;
-            width: 100%; height: 100%; color: rgba(248, 250, 252, 0.94);
+            width: 100%; height: 100%; color: rgba(248, 250, 252, 0.9);
             font-family: inherit; user-select: text; touch-action: auto;
             caret-color: #818cf8; padding: 0; margin: 0; line-height: 1.6;
         }
@@ -104,7 +104,7 @@
                     <span class="text-[10px] font-black opacity-20 uppercase tracking-widest">Session Intelligence</span>
                     <button id="clearSummary" class="text-[9px] font-black opacity-40 uppercase bg-white/5 px-2 py-1 rounded-lg">Clear All</button>
                 </div>
-                <textarea id="output" class="no-scrollbar text-[13px] font-medium" placeholder="Session data will appear here..."></textarea>
+                <textarea id="output" class="no-scrollbar text-[13px] font-medium" placeholder="Session data will appear here as you log trials..."></textarea>
             </div>
         </div>
 
@@ -119,28 +119,23 @@
                 </div>
                 <div id="guideContent" class="flex-1 overflow-y-auto pr-2 text-[13px] leading-6 text-slate-200">
                     <section class="mb-6">
-                        <h2 class="text-base font-bold mb-2 text-indigo-300">1. Interactive Templates</h2>
-                        <p>Use the <strong>Layers</strong> icon to cycle through clinical backgrounds:</p>
-                        <ul class="list-disc list-inside ml-2 opacity-80">
-                            <li><strong>Lined Paper:</strong> For handwriting or sentence structure practice.</li>
-                            <li><strong>Tic-Tac-Toe:</strong> A quick reinforcement game to keep sessions engaging.</li>
-                            <li><strong>Oral Anatomy:</strong> A visual aid for modeling tongue and lip placement.</li>
-                        </ul>
+                        <h2 class="text-base font-bold mb-1 text-indigo-300">1. Canvas Templates</h2>
+                        <p>Cycle through backgrounds (Lined, Tic-Tac-Toe, Anatomy) using the <strong>Layers</strong> icon.</p>
                     </section>
                     <section class="mb-6">
-                        <h2 class="text-base font-bold mb-2 text-indigo-300">2. Real-Time Data Logging</h2>
-                        <p>Switch to the <strong>Data Pane</strong> (list icon) to track progress. Each tap updates the percentages in the session report. Your manual notes are preserved even as trial counts update.</p>
+                        <h2 class="text-base font-bold mb-1 text-indigo-300">2. Tracking Trials</h2>
+                        <p>Logging a trial in the <strong>Data</strong> tab automatically calculates Independence % and Accuracy. It formats a summary at the top of your notes.</p>
                     </section>
                     <section class="mb-6">
-                        <h2 class="text-base font-bold mb-2 text-indigo-300">3. Pressure-Sensitive Ink</h2>
-                        <p>The canvas responds to touch pressure (on supported styluses). Use the orange and indigo toggles to differentiate between clinician models and student attempts.</p>
+                        <h2 class="text-base font-bold mb-1 text-indigo-300">3. Preserving Notes</h2>
+                        <p>Type your observations below the dashed line. Your notes stay intact even as you continue logging new trials.</p>
                     </section>
                 </div>
             </div>
         </div>
     </main>
 
-    <nav id="mainNav" class="safe-bottom flex justify-around pb-10 pt-2 transition-transform duration-300 bg-transparent">
+    <nav id="mainNav" class="safe-bottom flex justify-around pb-10 pt-2 transition-transform duration-300">
         <button onclick="setView('interact')" id="nav-interact" class="btn-active text-indigo-400"><i data-lucide="brush" class="w-8 h-8"></i></button>
         <button onclick="setView('data')" id="nav-data" class="btn-active opacity-30"><i data-lucide="layout-list" class="w-8 h-8"></i></button>
     </nav>
@@ -151,24 +146,21 @@
             templateIndex: 0,
             templates: ['Blank Canvas', 'Lined Paper', 'Tic-Tac-Toe', 'Oral Anatomy'],
             ac: null,
-            userHasEdited: false,
-            availableVoices: []
+            userHasEdited: false
         };
 
         const cMain = document.getElementById('canvasMain');
         const ctx = cMain.getContext('2d');
         const outputEl = document.getElementById('output');
         const inputSurface = document.getElementById('inputSurface');
-        const templateLabel = document.getElementById('templateLabel');
 
         function init() {
             lucide.createIcons();
-            bindEvents();
-            loadVoices();
             resize();
-            setInterval(() => { if (state.db.timerActive) { state.db.elapsed += 1; updateClock(); } }, 1000);
-            const unlockAudio = () => { if (!state.ac) state.ac = new (window.AudioContext || window.webkitAudioContext)(); };
-            window.addEventListener('pointerdown', unlockAudio, { once: true });
+            bindEvents();
+            setInterval(() => { if (state.db.timerActive) { state.db.elapsed++; updateClock(); } }, 1000);
+            const unlock = () => { if (!state.ac) state.ac = new (window.AudioContext || window.webkitAudioContext)(); };
+            window.addEventListener('pointerdown', unlock, { once: true });
         }
 
         function drawTemplate() {
@@ -177,13 +169,10 @@
             const h = cMain.height / dpr;
             ctx.save();
             ctx.setLineDash([]);
-            
             if (state.templateIndex === 1) { // Lined Paper
                 ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
                 ctx.lineWidth = 1;
-                for (let i = 40; i < h; i += 40) {
-                    ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(w, i); ctx.stroke();
-                }
+                for (let i = 40; i < h; i += 40) { ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(w, i); ctx.stroke(); }
             } else if (state.templateIndex === 2) { // Tic Tac Toe
                 ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
                 ctx.lineWidth = 3;
@@ -194,48 +183,29 @@
                     ctx.beginPath(); ctx.moveTo(offsetX + (size/3)*i, offsetY); ctx.lineTo(offsetX + (size/3)*i, offsetY + size); ctx.stroke();
                     ctx.beginPath(); ctx.moveTo(offsetX, offsetY + (size/3)*i); ctx.lineTo(offsetX + size, offsetY + (size/3)*i); ctx.stroke();
                 }
-            } else if (state.templateIndex === 3) { // Anatomy Simplified
+            } else if (state.templateIndex === 3) { // Anatomy
                 ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
                 ctx.lineWidth = 2;
                 ctx.beginPath();
                 ctx.arc(w/2, h/2 - 20, 60, 0, Math.PI, true); 
                 ctx.moveTo(w/2 - 60, h/2 - 20); ctx.quadraticCurveTo(w/2, h/2 + 80, w/2 + 60, h/2 - 20);
                 ctx.stroke();
-                ctx.font = 'bold 10px Inter'; ctx.fillStyle = 'rgba(255,255,255,0.2)';
-                ctx.textAlign = 'center';
-                ctx.fillText('ORAL PLACEMENT MODEL', w/2, h/2 - 100);
             }
             ctx.restore();
-            templateLabel.innerText = state.templates[state.templateIndex];
-        }
-
-        function loadVoices() {
-            const fetchVoices = () => {
-                state.availableVoices = window.speechSynthesis.getVoices();
-            };
-            fetchVoices();
-            if (speechSynthesis.onvoiceschanged !== undefined) {
-                speechSynthesis.onvoiceschanged = fetchVoices;
-            }
+            document.getElementById('templateLabel').innerText = state.templates[state.templateIndex];
         }
 
         function playNaturalSpeech(text) {
             window.speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.rate = 0.9;
-            const voices = state.availableVoices;
-            const voice = voices.find(v => /google|female|samantha|alloy/i.test(v.name)) || voices[0];
-            if (voice) utterance.voice = voice;
+            const voices = window.speechSynthesis.getVoices();
+            const preferredVoice = voices.find(v => v.name.includes('Google') || v.name.includes('Female'));
+            if (preferredVoice) utterance.voice = preferredVoice;
             window.speechSynthesis.speak(utterance);
         }
 
         function bindEvents() {
-            document.getElementById('toggleTemplate').onclick = () => {
-                state.templateIndex = (state.templateIndex + 1) % state.templates.length;
-                ctx.clearRect(0, 0, cMain.width, cMain.height);
-                drawTemplate();
-            };
-
             document.querySelectorAll('.snd-btn').forEach(btn => {
                 btn.onpointerdown = () => playNaturalSpeech(btn.dataset.speech);
             });
@@ -248,47 +218,38 @@
 
             document.getElementById('resetTimer').onclick = () => { state.db.elapsed = 0; updateClock(); };
 
-            let drawing = false;
-            const getPoint = e => { 
-                const rect = inputSurface.getBoundingClientRect(); 
-                return { x: e.clientX - rect.left, y: e.clientY - rect.top }; 
-            };
-            
-            inputSurface.onpointerdown = e => { 
-                drawing = true; 
-                const p = getPoint(e); 
-                ctx.beginPath(); 
-                ctx.moveTo(p.x, p.y); 
-                inputSurface.setPointerCapture(e.pointerId); 
-            };
-            inputSurface.onpointermove = e => {
-                if (!drawing) return;
-                const p = getPoint(e);
-                ctx.lineWidth = 2 + (e.pressure || 0.5) * 16;
-                ctx.strokeStyle = state.db.ink;
-                ctx.lineTo(p.x, p.y); 
-                ctx.stroke();
-            };
-            inputSurface.onpointerup = () => drawing = false;
+            outputEl.addEventListener('input', () => { state.userHasEdited = true; });
 
-            document.getElementById('clearInk').onclick = () => {
-                ctx.clearRect(0, 0, cMain.width, cMain.height);
+            document.getElementById('clearSummary').onclick = () => {
+                state.db.trials = { ind: 0, prm: 0, vis: 0, inc: 0 };
+                document.querySelectorAll('.log-btn span[id^="v-"]').forEach(s => s.innerText = '0');
+                state.userHasEdited = false;
+                outputEl.value = "";
+            };
+
+            document.getElementById('toggleTemplate').onclick = () => {
+                state.templateIndex = (state.templateIndex + 1) % state.templates.length;
+                ctx.clearRect(0,0,cMain.width,cMain.height);
                 drawTemplate();
             };
 
-            document.querySelectorAll('.clr-dot').forEach(d => {
-                d.onclick = () => {
-                    state.db.ink = d.dataset.color;
-                    document.querySelectorAll('.clr-dot').forEach(c => c.classList.remove('ring-white/60'));
-                    d.classList.add('ring-white/60');
-                };
+            let drawing = false;
+            inputSurface.onpointerdown = (e) => { drawing = true; inputSurface.setPointerCapture(e.pointerId); ctx.beginPath(); ctx.moveTo(e.offsetX, e.offsetY); };
+            inputSurface.onpointermove = (e) => { if(!drawing) return; ctx.lineWidth = 1 + (e.pressure * 20); ctx.strokeStyle = state.db.ink; ctx.lineTo(e.offsetX, e.offsetY); ctx.stroke(); };
+            inputSurface.onpointerup = () => drawing = false;
+
+            document.getElementById('clearInk').onclick = () => { ctx.clearRect(0,0,cMain.width,cMain.height); drawTemplate(); };
+            document.querySelectorAll('.clr-dot').forEach(d => d.onclick = () => {
+                state.db.ink = d.dataset.color;
+                document.querySelectorAll('.clr-dot').forEach(c => c.classList.remove('ring-white/60'));
+                d.classList.add('ring-white/60');
             });
 
             document.querySelectorAll('.log-btn').forEach(b => {
-                b.onclick = () => {
-                    state.db.trials[b.dataset.id] += 1;
-                    document.getElementById(`v-${b.dataset.id}`).innerText = state.db.trials[b.dataset.id];
-                    updateSummary();
+                b.onclick = () => { 
+                    state.db.trials[b.dataset.id]++; 
+                    document.getElementById(`v-${b.dataset.id}`).innerText = state.db.trials[b.dataset.id]; 
+                    updateSummary(); 
                 };
             });
 
@@ -296,44 +257,58 @@
             document.getElementById('backFromGuide').onclick = () => setView('interact');
         }
 
-        function resize() {
-            const dpr = window.devicePixelRatio || 1;
-            const rect = cMain.parentElement.getBoundingClientRect();
-            if (!rect.width) return;
-            cMain.width = rect.width * dpr;
-            cMain.height = rect.height * dpr;
-            ctx.scale(dpr, dpr);
-            ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-            ctx.strokeStyle = state.db.ink;
-            drawTemplate();
-        }
-
         function updateClock() {
-            const m = Math.floor(state.db.elapsed / 60).toString().padStart(2, '0');
-            const s = (state.db.elapsed % 60).toString().padStart(2, '0');
+            const m = Math.floor(state.db.elapsed/60).toString().padStart(2,'0');
+            const s = (state.db.elapsed%60).toString().padStart(2,'0');
             document.getElementById('clock').innerText = `${m}:${s}`;
         }
 
+        // RESTORED ORIGINAL SUMMARY LOGIC
         function updateSummary() {
             const { ind, prm, vis, inc } = state.db.trials;
             const total = ind + prm + vis + inc;
-            const divider = '--------------------------------';
+            if (total === 0) return;
+
             const indRate = Math.round((ind / (total || 1)) * 100);
             const succRate = Math.round(((ind + prm + vis) / (total || 1)) * 100);
-            const assistText = `SESSION DATA:\n• Trials: ${total} total\n• Independence: ${indRate}%\n• Accuracy: ${succRate}%\n• Breakdown: ${prm}P, ${vis}V, ${inc}X.\n• Time: ${document.getElementById('clock').innerText}\n${divider}`;
-            if (!state.userHasEdited) { outputEl.value = `${assistText}\n\nObservations:`; }
-            else {
-                const current = outputEl.value;
-                const idx = current.indexOf(divider);
-                outputEl.value = idx !== -1 ? `${assistText}\n${current.substring(idx + divider.length).trimStart()}` : `${assistText}\n${current}`;
+            const divider = "--------------------------------";
+            
+            const assistText = `SESSION DATA:
+• Trials: ${total} total
+• Independence: ${indRate}% (${ind} unassisted)
+• Accuracy: ${succRate}% (with cues)
+• Breakdown: ${prm} Prompts, ${vis} Visuals, ${inc} Incorrect.
+• Time: ${document.getElementById('clock').innerText}\n${divider}`;
+
+            if (!state.userHasEdited) {
+                outputEl.value = assistText + "\n\nObservations:";
+            } else {
+                const currentText = outputEl.value;
+                const splitIdx = currentText.indexOf(divider);
+                if (splitIdx !== -1) {
+                    const userNotes = currentText.substring(splitIdx + divider.length);
+                    outputEl.value = assistText + userNotes;
+                } else {
+                    outputEl.value = assistText + "\n" + currentText;
+                }
             }
+        }
+
+        function resize() {
+            const dpr = window.devicePixelRatio || 1;
+            const rect = cMain.parentElement.getBoundingClientRect();
+            if(!rect.width) return;
+            cMain.width = rect.width * dpr; cMain.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
+            ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = state.db.ink;
+            drawTemplate();
         }
 
         function setView(id) {
             document.querySelectorAll('.pane').forEach(p => p.classList.remove('active'));
             document.getElementById(`pane-${id}`).classList.add('active');
             document.querySelectorAll('nav button').forEach(b => b.classList.add('opacity-30'));
-            if (id !== 'guide') document.getElementById(`nav-${id}`).classList.remove('opacity-30');
+            if(id !== 'guide') document.getElementById(`nav-${id}`).classList.remove('opacity-30');
             if (id === 'interact') setTimeout(resize, 50);
         }
 
